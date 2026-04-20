@@ -7,11 +7,14 @@ echo "────────────────────────�
 
 # Clear cached config so Render's injected env vars take effect at runtime
 php artisan config:clear
-php artisan cache:clear
 
-# Run migrations against Supabase (safe with --force in production)
+# Run migrations first (creates the cache table)
 echo "→ Running migrations..."
 php artisan migrate --force
+
+# Now safe to clear cache (table exists)
+echo "→ Clearing cache..."
+php artisan cache:clear
 
 # Re-cache config now that real env vars are loaded
 echo "→ Caching config..."
