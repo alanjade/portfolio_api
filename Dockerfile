@@ -1,5 +1,7 @@
 # ── Stage 1: Composer dependencies ───────────────────────────────────────────
-FROM composer:2.7 AS vendor
+FROM php:8.2-cli-alpine AS vendor
+
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
