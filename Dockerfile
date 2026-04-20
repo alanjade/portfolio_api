@@ -75,8 +75,7 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
 # Generate app key, cache config (key will be overridden by Render env var)
-RUN php artisan key:generate --force \
-    && php artisan config:cache \
+RUN php artisan config:cache \
     && php artisan route:cache \
     && php artisan view:cache
 
