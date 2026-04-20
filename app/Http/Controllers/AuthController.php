@@ -1,11 +1,9 @@
 <?php
 
 namespace App\Http\Controllers;
-use OpenApi\Annotations as OA;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
+use Illuminate\Http\JsonResponse;
 
 /**
  * @OA\Tag(name="Authentication", description="Admin authentication endpoints")
@@ -18,6 +16,20 @@ use App\Models\User;
  */
 class AuthController extends Controller
 {
+    // ── Helpers ──────────────────────────────────────────────────────────
+
+    private function success(mixed $data, string $message = 'Success', int $status = 200): JsonResponse
+    {
+        return response()->json(['message' => $message, 'data' => $data], $status);
+    }
+
+    private function error(string $message, int $status = 400, array $errors = []): JsonResponse
+    {
+        return response()->json(['message' => $message, 'errors' => $errors], $status);
+    }
+
+    // ── Endpoints ─────────────────────────────────────────────────────────
+
     /**
      * @OA\Post(
      *     path="/api/auth/login",
@@ -27,78 +39,68 @@ class AuthController extends Controller
      *         required=true,
      *         @OA\JsonContent(
      *             required={"email","password"},
-     *             @OA\Property(property="email", type="string", example="admin@example.com"),
+     *             @OA\Property(property="email",    type="string", example="admin@example.com"),
      *             @OA\Property(property="password", type="string", example="password123")
      *         )
      *     ),
-     *     @OA\Response(response=200, description="Login successful"),
+     *     @OA\Response(response=200, description="Login successful — returns { data: { token } }"),
      *     @OA\Response(response=401, description="Invalid credentials")
      * )
      */
-
-     private function sendSuccessResponse($data, $message = 'Success', $status = 200)
+    public function login(Request $request): JsonResponse
     {
-        return response()->json([
-            'message' => $message,
-            'data' => $data,
-        ], $status);
-    }
+        $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required|string',
+        ]);
 
-    // Helper method for standardized error responses
-    private function sendErrorResponse($message, $status = 400, $errors = [])
-    {
-        return response()->json([
-            'message' => $message,
-            'errors' => $errors,
-        ], $status);
-    }
-
-    public function login(Request $request)
-    {
         $credentials = $request->only('email', 'password');
 
         if (! $token = auth('api')->attempt($credentials)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid login credentials'
-            ], 401);
+            return $this->error('Invalid login credentials', 401);
         }
 
-         return $this->sendSuccessResponse(['token' => $token], 'Login successful');
+        return $this->success(['token' => $token], 'Login successful');
     }
-
 
     /**
      * @OA\Get(
      *     path="/api/auth/me",
-     *     summary="Get logged-in admin info",
+     *     summary="Get the authenticated admin's profile",
      *     tags={"Authentication"},
      *     security={{"bearerAuth":{}}},
-     *     @OA\Response(response=200, description="Admin info returned"),
+     *     @OA\Response(response=200, description="Admin profile — top-level user object"),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
+     *
+     * NOTE: The Next.js dashboard reads res.data?.data || res.data so both
+     * wrapped { data: user } and bare user shapes are handled on the frontend.
+     * We return bare here for simplicity; adjust if you prefer wrapped.
      */
-  
-    public function me()
+    public function me(): JsonResponse
     {
-        return response()->json(auth('api')->user());
-    }
+        $user = auth('api')->user();
 
+        if (! $user) {
+            return $this->error('Unauthenticated', 401);
+        }
+
+        return response()->json($user);
+    }
 
     /**
      * @OA\Post(
      *     path="/api/auth/logout",
-     *     summary="Logout admin",
+     *     summary="Logout — invalidates the JWT",
      *     tags={"Authentication"},
      *     security={{"bearerAuth":{}}},
      *     @OA\Response(response=200, description="Logout successful")
      * )
      */
-    public function logout()
+    public function logout(): JsonResponse
     {
         auth('api')->logout();
 
         return response()->json(['message' => 'Logged out successfully']);
     }
-
 }
