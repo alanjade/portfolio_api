@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: portfolio-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+
+    # Render's free tier — upgrade to 'standard' for production
+    plan: free
+
+    # Port your nginx listens on (must match Dockerfile EXPOSE)
+    port: 80
+
+    # Health check — Render will restart the container if this fails
+    healthCheckPath: /up
+
+    # Environment variables — set the secret ones in the Render dashboard,
+    # non-secret ones can live here.
+    envVars:
+      - key: APP_ENV
+        value: production
+
+      - key: APP_DEBUG
+        value: false
+
+      - key: APP_URL
+        # Render provides this automatically — override once you know your URL
+        fromService:
+          type: web
+          name: portfolio-api
+          property: host
