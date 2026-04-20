@@ -8,14 +8,13 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminSeeder extends Seeder
 {
-
     public function run(): void
     {
         User::updateOrCreate(
-            ['email' => env('ADMIN_EMAIL', 'admin@example.com')],
+            ['email' => 'lajadelabs@gmail.com'],
             [
-                'name'     => env('ADMIN_NAME', 'Admin'),
-                'password' => Hash::make(env('ADMIN_PASSWORD', 'password')),
+                'name'     => 'Ayodeji Alalade',
+                'password' => Hash::make('Securepass123!'),
             ]
         );
 

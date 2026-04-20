@@ -12,6 +12,10 @@ php artisan config:clear
 echo "→ Running migrations..."
 php artisan migrate --force
 
+# Seed the database (creates admin user if not exists)
+echo "→ Seeding database..."
+php artisan db:seed --force
+
 # Now safe to clear cache (table exists)
 echo "→ Clearing cache..."
 php artisan cache:clear
