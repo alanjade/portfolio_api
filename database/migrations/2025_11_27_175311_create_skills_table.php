@@ -6,24 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-      Schema::create('skills', function (Blueprint $table) {
-        $table->id();
-        $table->string('name');
-        $table->string('category'); // frontend, backend, devops
-        $table->integer('level')->default(80); // percent
-        $table->timestamps();
-    });
-
+        Schema::create('skills', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('category');           // e.g. Frontend, Backend, DevOps
+            $table->smallInteger('level')->default(80); // pgsql: use smallInteger (0-100)
+            $table->timestamps();
+        });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('skills');
