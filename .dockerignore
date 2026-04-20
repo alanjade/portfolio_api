@@ -24,9 +24,7 @@ phpunit.xml
 *.swo
 .DS_Store
 
-# Docker files themselves (already in image)
 Dockerfile
-docker/
 
 # Logs and cache (generated at runtime)
 storage/logs/*.log
