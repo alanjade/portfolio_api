@@ -1,51 +1,92 @@
 <?php
 
+/**
+ * CORS Configuration
+ */
+
 return [
 
     /*
-    |--------------------------------------------------------------------------
-    | CORS Configuration
-    |--------------------------------------------------------------------------
-    |
-    | env('FRONTEND_URL') should be set to your deployed Next.js URL in
-    | production (e.g. https://yoursite.vercel.app).
-    | For local dev, add http://localhost:3000 to CORS_ALLOWED_ORIGINS.
-    |
-    | NOTE: The original config had a bug — env() only accepts 2 args,
-    | so the third 'http://localhost:5173' was silently ignored.
-    | We now use a comma-separated env var instead.
-    |
+    |----------------------------------------------------------------------
+    | Paths covered by CORS headers
+    |----------------------------------------------------------------------
     */
-
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['*'],
-
     /*
-     * Parse a comma-separated CORS_ALLOWED_ORIGINS env var so you can list
-     * multiple origins without touching this file:
-     *
-     *   CORS_ALLOWED_ORIGINS=https://yoursite.vercel.app,http://localhost:3000
-     */
+    |----------------------------------------------------------------------
+    | Allowed origins
+    |----------------------------------------------------------------------
+    | List every origin that is permitted to make credentialed requests.
+    | Prefer explicit URLs over wildcard patterns.
+    |
+    | Environment-variable override lets you manage environments without
+    | changing code:
+    |   CORS_ALLOWED_ORIGINS=https://reu.ng,https://app.reu.ng
+    */
     'allowed_origins' => array_filter(
         array_map(
             'trim',
-            explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000'))
+            explode(',', env('CORS_ALLOWED_ORIGINS', implode(',', [
+                // ── Production ────────────────────────────────────────────
+                'https://jaladealan.vercel.app', 
+                // ── Local development ─────────────────────────────────────
+                'http://localhost:3000',
+                'http://localhost:5173',
+            ])))
         )
     ),
 
+    /*
+    |----------------------------------------------------------------------
+    | Allowed origin patterns (regex) — INTENTIONALLY EMPTY
+    |----------------------------------------------------------------------
+    */
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    /*
+    |----------------------------------------------------------------------
+    | Allowed HTTP methods
+    |----------------------------------------------------------------------
+    */
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
+    /*
+    |----------------------------------------------------------------------
+    | Allowed request headers
+    |----------------------------------------------------------------------
+    */
+    'allowed_headers' => [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'Accept',
+        'Origin',
+        'X-CSRF-TOKEN',
+    ],
+
+    /*
+    |----------------------------------------------------------------------
+    | Headers exposed to the browser
+    |----------------------------------------------------------------------
+    */
     'exposed_headers' => [],
 
+    /*
+    |----------------------------------------------------------------------
+    | Preflight cache lifetime (seconds)
+    |----------------------------------------------------------------------
+    */
     'max_age' => 86400,
 
     /*
-     * Keep false unless you're sending cookies/sessions cross-origin.
-     * JWT is Bearer-token based — credentials not required.
-     */
-    'supports_credentials' => false,
+    |----------------------------------------------------------------------
+    | Credentials (cookies, Authorization header)
+    |----------------------------------------------------------------------
+    | Must be true for JWT cookies / session-based auth to work cross-origin.
+    | When true, `allowed_origins` must be explicit — "*" is rejected by
+    | browsers for credentialed requests.
+    */
+    'supports_credentials' => true,
 
 ];
