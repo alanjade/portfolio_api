@@ -69,9 +69,6 @@ COPY --from=vendor /app/vendor ./vendor
 # Copy application source
 COPY . .
 
-# Copy .env for build (Render injects real env vars at runtime)
-RUN cp .env.example .env
-
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
