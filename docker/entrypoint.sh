@@ -1,29 +1,21 @@
 #!/bin/sh
 set -e
 
-echo "──────────────────────────────────────────"
-echo "  Portfolio API — starting up"
-echo "──────────────────────────────────────────"
+# ── Ensure storage directories exist ─────────────────────────────────────────
+mkdir -p storage/app/public \
+         storage/framework/cache/data \
+         storage/framework/sessions \
+         storage/framework/views \
+         storage/logs \
+         bootstrap/cache
 
-# Clear cached config so Render's injected env vars take effect at runtime
+# ── Laravel bootstrap ─────────────────────────────────────────────────────────
 php artisan config:clear
-
-# Run migrations first (creates the cache table)
-echo "→ Running migrations..."
-php artisan migrate --force
-
-# Seed the database (creates admin user if not exists)
-echo "→ Seeding database..."
-php artisan db:seed --force
-
-# Now safe to clear cache (table exists)
-echo "→ Clearing cache..."
 php artisan cache:clear
-
-# Re-cache config now that real env vars are loaded
-echo "→ Caching config..."
 php artisan config:cache
 php artisan route:cache
+php artisan storage:link --quiet 2>/dev/null || true
+php artisan migrate --force
+php artisan db:seed --force
 
-echo "→ Starting services (nginx + php-fpm)..."
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

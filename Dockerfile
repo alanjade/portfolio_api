@@ -1,91 +1,37 @@
-# ── Stage 1: Composer dependencies ───────────────────────────────────────────
-FROM php:8.2-cli-alpine AS vendor
+FROM php:8.3-fpm
 
-COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
-
-WORKDIR /app
-
-COPY composer.json composer.lock ./
-
-# Install production dependencies only (no dev)
-RUN composer install \
-    --no-dev \
-    --no-interaction \
-    --no-progress \
-    --no-scripts \
-    --prefer-dist \
-    --optimize-autoloader
-
-# ── Stage 2: Production image ─────────────────────────────────────────────────
-FROM php:8.2-fpm-alpine
-
-# ── System dependencies ───────────────────────────────────────────────────────
-RUN apk add --no-cache \
-    nginx \
-    supervisor \
-    curl \
-    unzip \
-    libpq-dev \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    libwebp-dev \
-    freetype-dev \
-    oniguruma-dev \
-    icu-dev \
-    libzip-dev \
-    && docker-php-ext-configure gd \
-        --with-freetype \
-        --with-jpeg \
-        --with-webp \
-    && docker-php-ext-install -j$(nproc) \
-        pdo \
-        pdo_pgsql \
-        pgsql \
-        gd \
-        mbstring \
-        bcmath \
-        zip \
-        intl \
-        opcache \
-    && rm -rf /var/cache/apk/*
-
-# ── PHP config ────────────────────────────────────────────────────────────────
-COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
-COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
-
-# ── Nginx config ──────────────────────────────────────────────────────────────
-COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
-COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
-
-# ── Supervisor config ─────────────────────────────────────────────────────────
-COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# ── App ───────────────────────────────────────────────────────────────────────
 WORKDIR /var/www/html
+ENV HOME=/var/www/html
 
-# Copy vendor from Stage 1
-COPY --from=vendor /app/vendor ./vendor
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl zip unzip supervisor \
+    libpng-dev libonig-dev libxml2-dev libzip-dev libpq-dev \
+    postgresql-client \
+    && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy application source
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 COPY . .
+COPY entrypoint.sh /entrypoint.sh
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
+RUN composer install --optimize-autoloader --no-dev \
+    && rm -f bootstrap/cache/packages.php bootstrap/cache/services.php \
+    && php artisan package:discover --ansi \
+    && mkdir -p storage/app/public \
+    && mkdir -p storage/framework/{cache,sessions,views} \
+    && mkdir -p storage/logs \
+    && mkdir -p bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 storage bootstrap/cache \
+    && chmod +x /entrypoint.sh
 
-# Generate app key, cache config (key will be overridden by Render env var)
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
+EXPOSE 9000
 
-# Storage symlink for public image URLs (storage/app/public → public/storage)
-RUN php artisan storage:link
+USER www-data
 
-EXPOSE 80
-
-# Entrypoint: run migrations then start nginx + php-fpm via supervisor
-COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/entrypoint.sh"]
