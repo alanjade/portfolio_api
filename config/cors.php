@@ -87,6 +87,6 @@ return [
     | When true, `allowed_origins` must be explicit — "*" is rejected by
     | browsers for credentialed requests.
     */
-    'supports_credentials' => true,
+    'supports_credentials' => false,
 
 ];
