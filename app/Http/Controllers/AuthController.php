@@ -2,96 +2,83 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
 /**
  * @OA\Tag(name="Authentication", description="Admin authentication endpoints")
- * @OA\SecurityScheme(
- *     securityScheme="bearerAuth",
- *     type="http",
- *     scheme="bearer",
- *     bearerFormat="JWT"
- * )
  */
 class AuthController extends Controller
 {
-    // ── Helpers ──────────────────────────────────────────────────────────
-
-    private function success(mixed $data, string $message = 'Success', int $status = 200): JsonResponse
-    {
-        return response()->json(['message' => $message, 'data' => $data], $status);
-    }
-
-    private function error(string $message, int $status = 400, array $errors = []): JsonResponse
-    {
-        return response()->json(['message' => $message, 'errors' => $errors], $status);
-    }
-
-    // ── Endpoints ─────────────────────────────────────────────────────────
-
     /**
      * @OA\Post(
      *     path="/api/auth/login",
      *     summary="Admin login",
      *     tags={"Authentication"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"email","password"},
-     *             @OA\Property(property="email",    type="string", example="admin@example.com"),
-     *             @OA\Property(property="password", type="string", example="password123")
-     *         )
-     *     ),
-     *     @OA\Response(response=200, description="Login successful — returns { data: { token } }"),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *         required={"email","password"},
+     *         @OA\Property(property="email",    type="string", example="admin@example.com"),
+     *         @OA\Property(property="password", type="string", example="password123")
+     *     )),
+     *     @OA\Response(response=200, description="Login successful"),
      *     @OA\Response(response=401, description="Invalid credentials")
      * )
      */
     public function login(Request $request): JsonResponse
     {
-        $request->validate([
+        $credentials = $request->validate([
             'email'    => 'required|email',
             'password' => 'required|string',
         ]);
 
-        $credentials = $request->only('email', 'password');
-
-        if (! $token = auth('api')->attempt($credentials)) {
-            return $this->error('Invalid login credentials', 401);
+        try {
+            if (! $token = JWTAuth::attempt($credentials)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid credentials',
+                ], 401);
+            }
+        } catch (JWTException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not create token',
+            ], 500);
         }
 
-        return $this->success(['token' => $token], 'Login successful');
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'data'    => [
+                'token' => $token,
+                'user'  => auth()->user(),
+            ],
+        ]);
     }
 
     /**
      * @OA\Get(
      *     path="/api/auth/me",
-     *     summary="Get the authenticated admin's profile",
+     *     summary="Get logged-in admin info",
      *     tags={"Authentication"},
      *     security={{"bearerAuth":{}}},
-     *     @OA\Response(response=200, description="Admin profile — top-level user object"),
+     *     @OA\Response(response=200, description="Admin info returned"),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
-     *
-     * NOTE: The Next.js dashboard reads res.data?.data || res.data so both
-     * wrapped { data: user } and bare user shapes are handled on the frontend.
-     * We return bare here for simplicity; adjust if you prefer wrapped.
      */
     public function me(): JsonResponse
     {
-        $user = auth('api')->user();
-
-        if (! $user) {
-            return $this->error('Unauthenticated', 401);
-        }
-
-        return response()->json($user);
+        return response()->json([
+            'success' => true,
+            'data'    => auth()->user(),
+        ]);
     }
 
     /**
      * @OA\Post(
      *     path="/api/auth/logout",
-     *     summary="Logout — invalidates the JWT",
+     *     summary="Logout admin",
      *     tags={"Authentication"},
      *     security={{"bearerAuth":{}}},
      *     @OA\Response(response=200, description="Logout successful")
@@ -99,8 +86,15 @@ class AuthController extends Controller
      */
     public function logout(): JsonResponse
     {
-        auth('api')->logout();
+        try {
+            JWTAuth::invalidate(JWTAuth::getToken());
+        } catch (JWTException $e) {
+            // Token already invalid, continue
+        }
 
-        return response()->json(['message' => 'Logged out successfully']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Logged out successfully',
+        ]);
     }
 }
