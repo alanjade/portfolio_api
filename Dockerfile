@@ -16,8 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY . .
-COPY entrypoint.sh /entrypoint.sh
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 RUN composer install --optimize-autoloader --no-dev \
     && rm -f bootstrap/cache/packages.php bootstrap/cache/services.php \
@@ -28,10 +26,10 @@ RUN composer install --optimize-autoloader --no-dev \
     && mkdir -p bootstrap/cache \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache \
-    && chmod +x /entrypoint.sh
+    && chmod +x entrypoint.sh
 
 EXPOSE 9000
 
 USER www-data
 
-CMD ["/entrypoint.sh"]
+CMD ["./entrypoint.sh"]
