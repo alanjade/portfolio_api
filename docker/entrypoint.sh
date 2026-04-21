@@ -1,21 +1,26 @@
 #!/bin/sh
 set -e
 
-# ── Ensure storage directories exist ─────────────────────────────────────────
-mkdir -p storage/app/public \
-         storage/framework/cache/data \
-         storage/framework/sessions \
-         storage/framework/views \
+echo "Starting Laravel setup..."
+
+mkdir -p storage/framework/{cache,sessions,views} \
          storage/logs \
          bootstrap/cache
 
-# ── Laravel bootstrap ─────────────────────────────────────────────────────────
-php artisan config:clear
-php artisan cache:clear
-php artisan config:cache
-php artisan route:cache
-php artisan storage:link --quiet 2>/dev/null || true
-php artisan migrate --force
-php artisan db:seed --force
+# Laravel optimizations (safe on deploy)
+php artisan config:clear || true
+php artisan cache:clear || true
+php artisan config:cache || true
+php artisan route:cache || true
 
-exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+# Storage link (ignore failure)
+php artisan storage:link --quiet || true
+
+# Run migrations safely
+php artisan migrate --force || true
+
+echo "Starting Laravel server..."
+
+exec php artisan serve \
+    --host=0.0.0.0 \
+    --port=${PORT:-10000}
