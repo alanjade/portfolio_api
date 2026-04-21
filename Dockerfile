@@ -1,4 +1,4 @@
-FROM php:8.3-fpm
+FROM php:8.2-fpm
 
 WORKDIR /var/www/html
 ENV HOME=/var/www/html
@@ -17,6 +17,13 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY . .
 
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.php.ini
+COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 RUN composer install --optimize-autoloader --no-dev \
     && rm -f bootstrap/cache/packages.php bootstrap/cache/services.php \
     && php artisan package:discover --ansi \
@@ -25,11 +32,10 @@ RUN composer install --optimize-autoloader --no-dev \
     && mkdir -p storage/logs \
     && mkdir -p bootstrap/cache \
     && chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 storage bootstrap/cache \
-    && chmod +x entrypoint.sh
+    && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 9000
 
 USER www-data
 
-CMD ["./entrypoint.sh"]
+CMD ["entrypoint.sh"]
